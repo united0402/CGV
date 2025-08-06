@@ -1,0 +1,21 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Mac system files
+.DS_Store
+
+# VSCode settings (optional)
+.vscode/
+
+# Env files (if you use them in the future)
+.env
+.env.local
+.env.*.local
+
+# Build directories (if you ever add a bundler like Vite, Webpack, etc.)
+dist/
+build/

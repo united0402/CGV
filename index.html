@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soccer Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="startPage">
+        <h1>Welcome to ...</h1>
+        <button id="playButton">Start Game</button>
+        <button id="settingsButton">Settings</button>
+        <button id="controlsButton">Controls</button>
+    </div>
+    <div id="settings-modal" style="display: none;">
+        <h2>Settings</h2>
+        <div class="toggle-container">
+            <label for="music-toggle">Music</label>
+            <label class="switch">
+                <input type="checkbox" id="music-toggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div class="toggle-container">
+            <label for="sound-toggle">Sound</label>
+            <label class="switch">
+                <input type="checkbox" id="sound-toggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+        <button onclick="closeSettings()">Close</button>
+    </div>
+    <div id="ui">
+        <div id="score">Score: 0</div>
+        <div id="timer">Time: 60</div>
+        <button id="cameraButton">Switch Camera</button>
+        <button id="kickButton">Kick (Spacebar)</button>
+    </div>
+    <div id="game-over-screen" style="display: none;">
+        <h1>Game Over!</h1>
+        <p id="score-display"></p>
+        <button onclick="tryAgain()">Restart</button>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
