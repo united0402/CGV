@@ -6,8 +6,38 @@ let agents = []; // Array to store agents
 let isFirstPerson = false;
 let thirdPersonCamera, firstPersonCamera;
 let score = 0;
+let isPaused = false;
+let pauseButton;
 let timeLeft = 60;
 let gameOver = false;
+let currentStage = 1;
+let totalStages = 3;
+let stageConfig = {
+    1: {
+        name: "Beginner",
+        agentCount: 2,
+        agentSpeed: 0.05,
+        timeLimit: 60,
+        ballsToSpawn: 3,
+        description: "Learn the basics"
+    },
+    2: {
+        name: "Intermediate", 
+        agentCount: 3,
+        agentSpeed: 0.08,
+        timeLimit: 45,
+        ballsToSpawn: 4,
+        description: "More opponents, less time"
+    },
+    3: {
+        name: "Expert",
+        agentCount: 4,
+        agentSpeed: 0.12,
+        timeLimit: 30,
+        ballsToSpawn: 5,
+        description: "Maximum challenge!"
+    }
+};
 const playlist = [
     'music/Bo-Thata.mp3',
     'music/Donga.mp3',
@@ -47,6 +77,42 @@ function pauseMusic(){
     backgroundMusic.pause();
 }
 
+function togglePause() {
+    isPaused = !isPaused;
+    
+    if (isPaused) {
+        // Show pause screen
+        document.getElementById('pause-screen').style.display = 'flex';
+        document.getElementById('pauseButton').textContent = 'Resume';
+        
+        // Pause background music
+        if (!backgroundMusic.paused) {
+            backgroundMusic.pause();
+        }
+    } else {
+        // Hide pause screen
+        document.getElementById('pause-screen').style.display = 'none';
+        document.getElementById('pauseButton').textContent = 'Pause';
+        
+        // Resume background music if it was playing
+        const musicToggle = document.getElementById('music-toggle');
+        if (musicToggle && musicToggle.checked) {
+            backgroundMusic.play().catch(error => console.error('Error resuming music:', error));
+        }
+        
+        // Restart animation loop
+        animate();
+    }
+}
+
+function quitToMenu() {
+    isPaused = false;
+    gameOver = true;
+    document.getElementById('pause-screen').style.display = 'none';
+    document.getElementById('startPage').style.display = 'flex';
+    document.getElementById('pauseButton').style.display = 'none';
+    pauseMusic();
+}
 
 function init() {
     scene = new THREE.Scene();
@@ -123,13 +189,50 @@ document.getElementById('sound-toggle').addEventListener('change', () => {
     }
 });
 
-function startGame(){
+function startGame() {
     document.getElementById('startPage').style.display = 'none';
+    document.getElementById('victory-screen').style.display = 'none';
+    document.getElementById('stage-transition').style.display = 'none';
+    document.getElementById('game-over-screen').style.display = 'none';
+    
     gameOver = false;
-    timeLeft = 60;
-    score = 0;
+    currentStage = 1;
+    
+    // Initialize Three.js scene if not already done
+    if (!scene) {
+        init();
+    } else {
+        loadStage(currentStage);
+        resetGameObjects();
+    }
+    
     playMusic();
-    init();
+}
+
+function loadStage(stageNumber) {
+    const stage = stageConfig[stageNumber];
+    if (!stage) {
+        console.error('Stage not found:', stageNumber);
+        return;
+    }
+    
+    // Update game parameters based on stage
+    timeLeft = stage.timeLimit;
+    score = 0;
+    
+    // Update UI to show current stage
+    document.getElementById('stage-display').textContent = `Stage: ${stage.name}`;
+    document.getElementById('stage-description').textContent = stage.description;
+    document.getElementById('timer').textContent = `Time: ${timeLeft}`;
+    document.getElementById('score').textContent = `Score: ${score}`;
+    updateStageTarget();
+    
+    console.log(`Loading stage ${stageNumber}: ${stage.name}`);
+}
+
+function updateStageTarget() {
+    const target = getStageTarget(currentStage);
+    document.getElementById('stage-target').textContent = `Target: ${target} goals`;
 }
 
 function gameOver1(score){
@@ -137,31 +240,21 @@ function gameOver1(score){
     document.getElementById('score-display').textContent = `Final Score: ${score}`;
 }
 
-function resetGame(){
-    gameOver = false;
-    score = 0;
-    timeLeft = 60;
-
-    player.position.set(0, 2, 0);
-
-    balls.forEach(ball => scene.remove(ball));
-    balls = [];
-    spawnBalls(3);
-
-    agents.forEach((agent, index) => {
-        const initialPosition = [{x: 15, z: 0}, {x: -5, z: 14}, {x: 2, z: -14}, {x: 0, z: -17}];
-        agent.position.set(initialPosition[index].x, 2, initialPosition[index].z);
-    });
-
-    document.getElementById('score').textContent = `Score: ${score}`;
-    document.getElementById('timer').textContent = `Time: ${timeLeft}`;
-
+function resetGame() {
+    document.getElementById('victory-screen').style.display = 'none';
     document.getElementById('game-over-screen').style.display = 'none';
-}
-
-function tryAgain(){
-    resetGame();
+    document.getElementById('stage-transition').style.display = 'none';
+    
+    gameOver = false;
+    currentStage = 1;
+    loadStage(currentStage);
+    resetGameObjects();
+    
+    // Make sure animation restarts
     animate();
+}
+function tryAgain() {
+    resetGame();
 }
 
 function createPitch() {
@@ -249,25 +342,125 @@ function addStadiumLights(){
 }
 
 function createAgents() {
+    // Clear existing agents
+    agents.forEach(agent => scene.remove(agent));
+    agents = [];
+    
+    const stage = stageConfig[currentStage];
     const agentGeometry = new THREE.BoxGeometry(2, 3, 2);
-    const agentMaterial = new THREE.MeshPhongMaterial({ color: 0xff4444 });
     const agentRadius = 1.5;
-    // Defining four agents
-    const agentPositions = [
+    
+    // Create agents based on current stage
+    const basePositions = [
         { x: 15, z: 0 },
         { x: -5, z: 14 },
         { x: 2, z: -14 },
-        { x: 0, z: -17 } // Agent near the goal
+        { x: 0, z: -17 }
     ];
-
-    agentPositions.forEach((pos, index) => {
+    
+    for (let i = 0; i < stage.agentCount; i++) {
+        const agentMaterial = new THREE.MeshPhongMaterial({ 
+            color: getAgentColor(currentStage, i) 
+        });
         const agent = new THREE.Mesh(agentGeometry, agentMaterial);
+        
+        const pos = basePositions[i % basePositions.length];
         agent.position.set(pos.x, 2, pos.z);
-        agent.strategy = index % 2 === 0 ? 'chase' : 'defend'; // Alternate between chase and defend
-        agent.speed = 0.05 + Math.random() * 0.05; // Unique speed
+        
+        // Vary strategies based on stage
+        if (currentStage === 1) {
+            agent.strategy = i % 2 === 0 ? 'chase' : 'defend';
+        } else if (currentStage === 2) {
+            agent.strategy = ['chase', 'defend', 'intercept'][i % 3];
+        } else {
+            agent.strategy = ['chase', 'defend', 'intercept', 'block'][i % 4];
+        }
+        
+        agent.speed = stage.agentSpeed + (Math.random() * 0.02);
         agent.radius = agentRadius;
         scene.add(agent);
         agents.push(agent);
+    }
+}
+
+function getAgentColor(stage, index) {
+    // Different colors for different stages
+    const colors = {
+        1: [0xff4444, 0xff6666], // Reds
+        2: [0xffaa00, 0xffbb44, 0xffcc66], // Oranges
+        3: [0x4444ff, 0x6666ff, 0x8888ff, 0xaaaaff] // Blues
+    };
+    return colors[stage][index % colors[stage].length];
+}
+
+function updateAgents() {
+    agents.forEach(agent => {
+        const stage = stageConfig[currentStage];
+        
+        switch (agent.strategy) {
+            case 'chase':
+                chasePlayer(agent);
+                break;
+            case 'defend':
+                defendGoal(agent);
+                break;
+            case 'intercept':
+                interceptPlayer(agent);
+                break;
+            case 'block':
+                blockShots(agent);
+                break;
+        }
+        
+        // More aggressive in higher stages
+        if (currentStage > 1) {
+            tryStealBall(agent);
+        }
+    });
+}
+
+function interceptPlayer(agent) {
+    // Predict player movement and intercept
+    const predictDistance = 3;
+    const targetX = player.position.x + (player.position.x - agent.position.x) * predictDistance;
+    const targetZ = player.position.z + (player.position.z - agent.position.z) * predictDistance;
+    
+    const dx = targetX - agent.position.x;
+    const dz = targetZ - agent.position.z;
+    const distance = Math.sqrt(dx * dx + dz * dz);
+    
+    if (distance > 1) {
+        agent.position.x += (dx / distance) * agent.speed;
+        agent.position.z += (dz / distance) * agent.speed;
+    }
+}
+
+function blockShots(agent) {
+    // Position between player and goal
+    const blockX = (player.position.x + goalNet.position.x) / 2;
+    const blockZ = (player.position.z + goalNet.position.z) / 2;
+    
+    const dx = blockX - agent.position.x;
+    const dz = blockZ - agent.position.z;
+    const distance = Math.sqrt(dx * dx + dz * dz);
+    
+    if (distance > 1) {
+        agent.position.x += (dx / distance) * agent.speed * 0.7;
+        agent.position.z += (dz / distance) * agent.speed * 0.7;
+    }
+}
+
+function tryStealBall(agent) {
+    balls.forEach(ball => {
+        const dx = ball.position.x - agent.position.x;
+        const dz = ball.position.z - agent.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+        
+        if (distance < 2) {
+            // Kick ball away from player
+            ball.velocity.x = (ball.position.x - player.position.x) * 0.1;
+            ball.velocity.z = (ball.position.z - player.position.z) * 0.1;
+        }
     });
 }
 
@@ -294,6 +487,7 @@ function updateAgents() {
     });
 }
 
+
 function spawnBalls(count) {
     const ballGeometry = new THREE.SphereGeometry(0.5, 32, 32);
     for (let i = balls.length; i < count; i++) {
@@ -311,12 +505,17 @@ function getRandomColor() {
 }
 
 function onKeyDown(event) {
+    if (isPaused && event.code !== 'Escape') {
+        return; 
+    }
+    
     switch (event.code) {
         case 'KeyW': moveForward = true; break;
         case 'KeyS': moveBackward = true; break;
         case 'KeyA': moveLeft = true; break;
         case 'KeyD': moveRight = true; break;
         case 'Space': kickBall(); break;
+        case 'Escape': togglePause(); break; // Add ESC key for pause
     }
 }
 
@@ -372,7 +571,9 @@ function checkGoal() {
                 document.getElementById('score').textContent = `Score: ${score}`;
                 scene.remove(ball);
                 balls = balls.filter(b => b !== ball);
-                spawnBalls(3);
+                spawnBalls(stageConfig[currentStage].ballsToSpawn);
+                
+                checkStageCompletion();
             }
         });
     }
@@ -390,6 +591,89 @@ function kickBall() {
         }
     });
 }
+
+function checkStageCompletion() {
+    const stage = stageConfig[currentStage];
+    const stageComplete = score >= getStageTarget(currentStage);
+    
+    if (stageComplete) {
+        if (currentStage < totalStages) {
+            advanceToNextStage();
+        } else {
+            gameWon();
+        }
+    }
+}
+
+function getStageTarget(stageNumber) {
+    // Define score targets for each stage
+    const stageTargets = {
+        1: 3,  // Need 3 goals to complete stage 1
+        2: 6,  // Need 6 goals to complete stage 2  
+        3: 10  // Need 10 goals to complete stage 3
+    };
+    return stageTargets[stageNumber];
+}
+
+function pauseGame() {
+    gameOver = true;
+}
+
+function resumeGame() {
+    gameOver = false;
+    animate();
+}
+
+function advanceToNextStage() {
+    currentStage++;
+    pauseGame();
+    
+    // Show stage transition screen
+    document.getElementById('stage-transition').style.display = 'flex';
+    document.getElementById('next-stage-name').textContent = stageConfig[currentStage].name;
+    document.getElementById('next-stage-desc').textContent = stageConfig[currentStage].description;
+    
+    // Update agent count and behavior for new stage
+    setTimeout(() => {
+        document.getElementById('stage-transition').style.display = 'none';
+        loadStage(currentStage);
+        resetGameObjects();
+        resumeGame();
+    }, 3000); 
+}
+
+
+function resetGameObjects() {
+    // Clear existing balls
+    balls.forEach(ball => scene.remove(ball));
+    balls = [];
+    
+    // Clear existing agents
+    agents.forEach(agent => scene.remove(agent));
+    agents = [];
+    
+    // Reset player position
+    player.position.set(0, 2, 0);
+    
+    // Create new agents and balls for the current stage
+    createAgents();
+    spawnBalls(stageConfig[currentStage].ballsToSpawn);
+    
+    // Update camera position
+    if (isFirstPerson) {
+        firstPersonCamera.position.set(player.position.x, player.position.y + 3, player.position.z);
+        firstPersonCamera.lookAt(player.position.x, player.position.y + 2, player.position.z + 1);
+    } else {
+        thirdPersonCamera.position.set(0, 20, 30);
+        thirdPersonCamera.lookAt(0, 0, 0);
+    }
+}
+function gameWon() {
+    gameOver = true;
+    document.getElementById('victory-screen').style.display = 'flex';
+    document.getElementById('final-score').textContent = `Final Score: ${score}`;
+}
+
 
 function updateBalls() {
     const pitchBoundaryX = 29;
@@ -498,21 +782,25 @@ let animationRunning = false;
 
 
 function animate() {
-    if(gameOver || animationRunning) return;
+    if (gameOver || animationRunning || isPaused) return;
     animationRunning = true;
 
-
-    requestAnimationFrame(() =>{
+    requestAnimationFrame(() => {
         animationRunning = false;
         animate();
     });
-    updatePlayer();
-    updateAgents();
-    updateBalls();
-    updatePlayerBallCollisions();
-    updateAgentCollisions();
-    checkAgentPlayerCollisions();
-    checkGoal();
+    
+    // Only update game logic if not paused
+    if (!isPaused) {
+        updatePlayer();
+        updateAgents();
+        updateBalls();
+        updatePlayerBallCollisions();
+        updateAgentCollisions();
+        checkAgentPlayerCollisions();
+        checkGoal();
+    }
+    
     renderer.render(scene, camera);
 }
 
