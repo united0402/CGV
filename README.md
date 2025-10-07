@@ -19,7 +19,7 @@ This is a browser-based 3D soccer game built using **Three.js** and **Vanilla Ja
 - **WebGL** for hardware-accelerated graphics
 
 ## ⚽ Demonstration
-- [https://unknown11-svg.github.io/Soccer_ThreeJS/](https://unknown11-svg.github.io/Soccer_ThreeJS/)
+- [https://unknown11-svg.github.io/Soccer_ThreeJS/](https://united0402.github.io/CGV/)
 
 ## 🎵 Music Credit
 This project features tracks from **Babalwa M**'s album *Candour*, All music rights belong to the original artist.
