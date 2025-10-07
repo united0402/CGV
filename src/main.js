@@ -354,7 +354,7 @@ document.body.appendChild(levelLabel);
 // Load Keeper
 
 function loadKeeper() {
-  loader.load("/models/keeper.glb", (gltf) => {
+  loader.load("/models/humankeeper.glb", (gltf) => {
     keeper = gltf.scene;
     keeper.scale.set(5, 5, 5);
     keeper.position.set(0, groundTopY, -20); // place in goal zone
@@ -371,24 +371,7 @@ function loadKeeper() {
         keeperActions.idle = keeperMixer.clipAction(clip);
         keeperActions.idle.loop = THREE.LoopRepeat;
         keeperActions.idle.timeScale = 20;
-      } else if (name.includes("catch")) {
-        keeperActions.catch = keeperMixer.clipAction(clip);
-        keeperActions.catch.loop = THREE.LoopOnce;
-        keeperActions.catch.clampWhenFinished = true;
-        keeperActions.catch.timeScale = 20;
-      } else if (name.includes("diveright")) {
-         clip = clip.clone();
-  clip.tracks = clip.tracks.filter(track => !track.name.endsWith(".position")); 
-        keeperActions.diveright = keeperMixer.clipAction(clip);
-        keeperActions.diveright.loop = THREE.LoopOnce;
-        keeperActions.diveright.clampWhenFinished = true;
-        keeperActions.diveright.timeScale = 20;
-      } else if (name.includes("diveleft")) {
-        keeperActions.diveleft = keeperMixer.clipAction(clip);
-        keeperActions.diveleft.loop = THREE.LoopOnce;
-        keeperActions.diveleft.clampWhenFinished = true;
-        keeperActions.diveleft.timeScale = 20;
-      } else if (name.includes("bodyblockright")) {
+      }  else if (name.includes("bodyblockright")) {
         keeperActions.bodyblockright = keeperMixer.clipAction(clip);
         keeperActions.bodyblockright.loop = THREE.LoopOnce;
         keeperActions.bodyblockright.clampWhenFinished = true;
