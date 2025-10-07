@@ -7,7 +7,9 @@ import { DRACOLoader } from "three/examples/jsm/Addons.js";
 const scene = new THREE.Scene();
 
 scene.background = new THREE.Color(0x6789);
-
+let cameraMode = 0;
+const cameraOffset = new THREE.Vector3(0, 15, -25); // FIFA-style camera offset
+const cameraLerpFactor = 0.1; // Smooth camera follow
 const camera = new THREE.PerspectiveCamera(
   75,
   window.innerWidth / window.innerHeight,
@@ -75,6 +77,7 @@ let isPassing
 let isKicking
 let isalienPassing
 let isalienKicking
+let goal1Body, goal2Body;
 const blockers = [];
 let firstPost
 let secondPost
@@ -312,7 +315,7 @@ addGoalZone(
   groundCenter.z + goalOffsetZ,  // front side
   20, 10, 5, 0x00aaff
 );
-let goal1Body, goal2Body;
+
 goalZones.forEach((gz) => {
   if (gz.name === "goal1") goal1Body = gz;
   if (gz.name === "goal2") goal2Body = gz;
@@ -861,7 +864,7 @@ function keepBallClose() {
   if (!playerBody || !ballBody || !player) return;
 
   const isMoving =
-    keys.ArrowUp || keys.ArrowDown || keys.ArrowLeft || keys.ArrowRight;
+    keys.w || keys.s || keys.a || keys.d;
 
   const distance = playerBody.position.vsub(ballBody.position).length();
  // console.log("distance", distance)
@@ -1538,30 +1541,31 @@ function updateAlienAI(delta) {
 
 // CONTROLS
 const keys = {
-  ArrowUp: false,
-  ArrowDown: false,
-  ArrowLeft: false,
-  ArrowRight: false,
+  w: false,
+  s: false,
+  a: false,
+  d: false,
   p: false,
   k: false,
   c:false
 };
-let cameraMode = 0;
+
 window.addEventListener("keydown", (e) => {
   if (e.key in keys) keys[e.key] = true;
-if (e.key === "c") {
+  if (e.key === "c") {
     cameraMode = (cameraMode + 1) % 3;
     switch (cameraMode) {
       case 0:
-        camera.position.set(0, 30, 100);
-        camera.lookAt(0, 0, 0);
+        updateFIFACamera()
         break;
       case 1:
-        camera.position.set(100, 30, 0); // side view
+        // Side view
+        camera.position.set(100, 30, 0);
         camera.lookAt(0, 0, 0);
         break;
       case 2:
-        camera.position.set(0, 150, 0); // top view
+        // Top view
+        camera.position.set(0, 150, 0);
         camera.lookAt(0, 0, 0);
         break;
     }
@@ -1641,11 +1645,36 @@ function restartGame() {
 
 
 // PARAMETERS
-const playerSpeed = 15;;
+const playerSpeed = 15;
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.25;
-
+const fifaOffset = new THREE.Vector3(0,15,-25)
+const fifaLerp = 0.08;
+function updateFIFACamera() {
+  if (!player || !playerBody) return;
+  
+  // Get player position and direction
+  const playerPos = player.position.clone();
+  const playerDirection = new THREE.Vector3(
+    Math.sin(player.rotation.y),
+    0,
+    Math.cos(player.rotation.y)
+  );
+  
+  // Calculate desired camera position (behind and above player)
+  const desiredPosition = playerPos.clone()
+    .add(cameraOffset.clone().applyEuler(new THREE.Euler(0, player.rotation.y, 0)));
+  
+  // Smoothly interpolate camera position
+  camera.position.lerp(desiredPosition, cameraLerpFactor);
+  
+  // Look slightly ahead of the player in their movement direction
+  const lookAtTarget = playerPos.clone().add(playerDirection.multiplyScalar(10));
+  lookAtTarget.y += 5; // Look slightly upward
+  
+  camera.lookAt(lookAtTarget);
+}
 function animate() {
   requestAnimationFrame(animate);
 if (!gameStarted || gameOver) return; // pause everything if not playing
@@ -1656,14 +1685,17 @@ if (!gameStarted || gameOver) return; // pause everything if not playing
 if (playerBody && ballBody) {
     keepBallClose();
   }
+   if (cameraMode === 0) {
+    updateFIFACamera();
+  }
   if (playerBody) {
     let moveX = 0;
     let moveZ = 0;
 
-    if (keys.ArrowUp) moveZ -= 1;
-    if (keys.ArrowDown) moveZ += 1;
-    if (keys.ArrowLeft) moveX -= 1;
-    if (keys.ArrowRight) moveX += 1;
+    if (keys.w) moveZ -= 1;
+    if (keys.s) moveZ += 1;
+    if (keys.a) moveX -= 1;
+    if (keys.d) moveX += 1;
 
     const length = Math.hypot(moveX, moveZ);
     if (length > 0) {
@@ -1711,12 +1743,12 @@ if (playerBody && ballBody) {
   }
 
   // ✅ Animation switching
-  const isMoving =  keys.ArrowUp || keys.ArrowDown || keys.ArrowLeft || keys.ArrowRight;
+  const isMoving =  keys.w || keys.s || keys.a || keys.d;
 
 
  if (mixer) {
   if (actions.idle && actions.fastrun) {
-    const isMoving = keys.ArrowUp || keys.ArrowDown || keys.ArrowRight || keys.ArrowLeft;
+    const isMoving = keys.w || keys.s || keys.d || keys.a;
     
     if (currentState !== "kick" && currentState !== "pass" && currentState !== "tackle") {
       if (isMoving) {
@@ -1731,7 +1763,7 @@ if (playerBody && ballBody) {
 
   // if we’re in a one-shot (kick/pass), check if it ended
   if ((currentState === "kick" || currentState === "pass" || currentState === "tackle") && currentAction.time >= currentAction.getClip().duration) {
-    const isMoving = keys.ArrowUp || keys.ArrowDown || keys.ArrowLeft || keys.ArrowRight;
+    const isMoving = keys.w || keys.s || keys.a || keys.d;
    fadeToAction(isMoving ? "fastrun" : "idle", 0.3);
  }
  
@@ -1786,4 +1818,4 @@ window.addEventListener("resize", () => {
 
 
 
-//import * as THREE from "three"; import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"; import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"; const scene = new THREE.Scene(); scene.background = new THREE.Color(0x6789); const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 ); camera.position.set(0, 30, 100); camera.lookAt(0, 0, 0); const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight); document.body.appendChild(renderer.domElement); const light = new THREE.DirectionalLight(0xffffff, 1); light.position.set(30, 50, 30); scene.add(light); scene.add(new THREE.AmbientLight(0xffffff, 0.5)); const loader = new GLTFLoader(); let stadium, ball, player, mixer, actions = {}; const clock = new THREE.Clock(); loader.load("/models/stadium.glb", (gltf) => { stadium = gltf.scene; stadium.scale.set(10, 5, 10); stadium.position.set(0, 0, 0); stadium.rotation.y = Math.PI / 2; scene.add(stadium); loadBall(); loadPlayer(); }); function loadBall() { loader.load("/models/ball.glb", (gltf) => { ball = gltf.scene; ball.scale.set(0.8, 0.8, 0.8); ball.position.set(4, 1.71, 0); scene.add(ball); }, undefined, (err) => console.error("Ball loading error:", err)); } function loadPlayer() { loader.load("/models/player.glb", (gltf) => { player = gltf.scene; player.scale.set(4, 4, 4); player.position.set(0, 0.99, 0); // Start a bit away from ball scene.add(player); // Setup animations mixer = new THREE.AnimationMixer(player); gltf.animations.forEach((clip) => { if (clip.name.toLowerCase().includes("slowrun")) { actions.slowrun = mixer.clipAction(clip); actions.slowrun.play(); } }); }, undefined, (err) => console.error("Player loading error:", err)); } // Controls const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false }; window.addEventListener("keydown", (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key] = true; }); window.addEventListener("keyup", (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key] = false; }); // Player movement parameters const playerSpeed = 0.25; const ballMoveForce = 0.5; const controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.dampingFactor = 0.25; controls.screenSpacePanning = false; function animate() { requestAnimationFrame(animate); const delta = clock.getDelta(); if (mixer) { // Check if any movement key is pressed const isMoving = keys.ArrowUp || keys.ArrowDown || keys.ArrowLeft || keys.ArrowRight; if (actions.slowrun) { actions.slowrun.paused = !isMoving; // Pause when no input, play when moving if (!actions.slowrun.isRunning() && isMoving) { actions.slowrun.play(); } } mixer.update(delta); } if (player && ball) { let moveX = 0, moveZ = 0; if (keys.ArrowUp) moveZ -= playerSpeed; if (keys.ArrowDown) moveZ += playerSpeed; if (keys.ArrowLeft) moveX -= playerSpeed; if (keys.ArrowRight) moveX += playerSpeed; // Move player player.position.x += moveX; player.position.z += moveZ; // Rotate player to face movement direction if moving if (moveX !== 0 || moveZ !== 0) { const angle = Math.atan2(moveX, moveZ); player.rotation.y = angle; } // Check collision with ball (simple distance check) const distance = player.position.distanceTo(ball.position); const collisionDistance = 3; // Adjust depending on player/ball sizes if (distance < collisionDistance) { // Calculate small force vector based on player movement const forceVector = new THREE.Vector3(moveX, 0, moveZ).normalize().multiplyScalar(ballMoveForce); ball.position.add(forceVector); // Keep ball on ground level ball.position.y = 1; } } controls.update(); renderer.render(scene, camera); } animate(); window.addEventListener("resize", () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }); In that code the stadium is a soccer fields extract ground named ground from blender, firstgoal for first goalpost and secondgoal for the 2nd one. the the ball and player must not pass through the ground. use cannon to put physics to the ball. the player and ball must not pass through the goalposts they can enter but not go through it. use cannon to put physics between the player, the ball and field. the player has two animations from blender slowrun and idle. when the player is not controlled by controls play the idle animatition otherwise keep slowrun animation.
+//import * as THREE from "three"; import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"; import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"; const scene = new THREE.Scene(); scene.background = new THREE.Color(0x6789); const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 ); camera.position.set(0, 30, 100); camera.lookAt(0, 0, 0); const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight); document.body.appendChild(renderer.domElement); const light = new THREE.DirectionalLight(0xffffff, 1); light.position.set(30, 50, 30); scene.add(light); scene.add(new THREE.AmbientLight(0xffffff, 0.5)); const loader = new GLTFLoader(); let stadium, ball, player, mixer, actions = {}; const clock = new THREE.Clock(); loader.load("/models/stadium.glb", (gltf) => { stadium = gltf.scene; stadium.scale.set(10, 5, 10); stadium.position.set(0, 0, 0); stadium.rotation.y = Math.PI / 2; scene.add(stadium); loadBall(); loadPlayer(); }); function loadBall() { loader.load("/models/ball.glb", (gltf) => { ball = gltf.scene; ball.scale.set(0.8, 0.8, 0.8); ball.position.set(4, 1.71, 0); scene.add(ball); }, undefined, (err) => console.error("Ball loading error:", err)); } function loadPlayer() { loader.load("/models/player.glb", (gltf) => { player = gltf.scene; player.scale.set(4, 4, 4); player.position.set(0, 0.99, 0); // Start a bit away from ball scene.add(player); // Setup animations mixer = new THREE.AnimationMixer(player); gltf.animations.forEach((clip) => { if (clip.name.toLowerCase().includes("slowrun")) { actions.slowrun = mixer.clipAction(clip); actions.slowrun.play(); } }); }, undefined, (err) => console.error("Player loading error:", err)); } // Controls const keys = { w: false, s: false, a: false, d: false }; window.addEventListener("keydown", (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key] = true; }); window.addEventListener("keyup", (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key] = false; }); // Player movement parameters const playerSpeed = 0.25; const ballMoveForce = 0.5; const controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.dampingFactor = 0.25; controls.screenSpacePanning = false; function animate() { requestAnimationFrame(animate); const delta = clock.getDelta(); if (mixer) { // Check if any movement key is pressed const isMoving = keys.w || keys.s || keys.a || keys.d; if (actions.slowrun) { actions.slowrun.paused = !isMoving; // Pause when no input, play when moving if (!actions.slowrun.isRunning() && isMoving) { actions.slowrun.play(); } } mixer.update(delta); } if (player && ball) { let moveX = 0, moveZ = 0; if (keys.w) moveZ -= playerSpeed; if (keys.s) moveZ += playerSpeed; if (keys.a) moveX -= playerSpeed; if (keys.d) moveX += playerSpeed; // Move player player.position.x += moveX; player.position.z += moveZ; // Rotate player to face movement direction if moving if (moveX !== 0 || moveZ !== 0) { const angle = Math.atan2(moveX, moveZ); player.rotation.y = angle; } // Check collision with ball (simple distance check) const distance = player.position.distanceTo(ball.position); const collisionDistance = 3; // Adjust depending on player/ball sizes if (distance < collisionDistance) { // Calculate small force vector based on player movement const forceVector = new THREE.Vector3(moveX, 0, moveZ).normalize().multiplyScalar(ballMoveForce); ball.position.add(forceVector); // Keep ball on ground level ball.position.y = 1; } } controls.update(); renderer.render(scene, camera); } animate(); window.addEventListener("resize", () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }); In that code the stadium is a soccer fields extract ground named ground from blender, firstgoal for first goalpost and secondgoal for the 2nd one. the the ball and player must not pass through the ground. use cannon to put physics to the ball. the player and ball must not pass through the goalposts they can enter but not go through it. use cannon to put physics between the player, the ball and field. the player has two animations from blender slowrun and idle. when the player is not controlled by controls play the idle animatition otherwise keep slowrun animation.

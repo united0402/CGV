@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Three.js + Vite</title>
+  <link rel="stylesheet" href="style.css">
   <style>
     body { margin: 0; overflow: hidden; }
   </style>
@@ -22,17 +23,30 @@
   font-family: sans-serif;
   z-index: 10;
 ">
-  <h1>⚽ Soccer Challenge</h1>
-  <p>Use arrows <b>Up, Down, Left, Right</b> to move, <b>P</b> to pass and <b>K</b> to kick.<br>
-  Score a goal against the keeper before time runs out!<br>
-  The game will automatically switch you to a different level as soon as you score a goal.<br>
-  Obstacles will be added as the game levels changes.<br>
-  The game has three game levels, Easy - Without obstacles, Medium - With 2 obstacles, Hard - With 4 obstacles.<br>
-  Press <b>C</b> to change the camera view.<br>
- Use your mouse left clicked to move around, right clicked to pan and mouse wheel to zoom.<br></p>
- 
-  <button id="startBtn" style="padding: 10px 20px; font-size: 20px; cursor: pointer;">Start Game</button>
-</div>
+    <div id="startPage">
+        <h1>Welcome to ...</h1>
+        <button id="startBtn" style="padding: 10px 20px; font-size: 20px; cursor: pointer;">Start Game</button>
+        <button id="settingsButton">Settings</button>
+        <button id="controlsButton">Controls</button>
+    </div>
+    <div id="settings-modal" style="display: none;">
+        <h2>Settings</h2>
+        <div class="toggle-container">
+            <label for="music-toggle">Music</label>
+            <label class="switch">
+                <input type="checkbox" id="music-toggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div class="toggle-container">
+            <label for="sound-toggle">Sound</label>
+            <label class="switch">
+                <input type="checkbox" id="sound-toggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+        <button onclick="closeSettings()">Close</button>
+    </div>
 
 <div id="timerDiv" style="
   position: absolute;
