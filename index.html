@@ -23,31 +23,47 @@
   font-family: sans-serif;
   z-index: 10;
 ">
-    <div id="startPage">
-        <h1>Welcome to ...</h1>
-        <button id="startBtn" style="padding: 10px 20px; font-size: 20px; cursor: pointer;">Start Game</button>
-        <button id="settingsButton">Settings</button>
-        <button id="controlsButton">Controls</button>
+<div id="startPage">
+    <h1>Welcome to ...</h1>
+    <button id="startBtn" style="padding: 10px 20px; font-size: 20px; cursor: pointer;">Start Game</button>
+    <button id="settingsButton">Settings</button>
+    <button id="controlsButton">Controls</button>
+</div>
+<audio id="bgMusic" src="music/mixkit-carry-on-1091.mp3" loop></audio>
+<!-- Settings Modal -->
+<div id="settings-modal" style="display: none;">
+    <h2>Settings</h2>
+    <div class="toggle-container">
+        <label for="music-toggle">Music</label>
+        <label class="switch">
+            <input type="checkbox" id="music-toggle">
+            <span class="slider"></span>
+        </label>
     </div>
-    <div id="settings-modal" style="display: none;">
-        <h2>Settings</h2>
-        <div class="toggle-container">
-            <label for="music-toggle">Music</label>
-            <label class="switch">
-                <input type="checkbox" id="music-toggle">
-                <span class="slider"></span>
-            </label>
-        </div>
-        <div class="toggle-container">
-            <label for="sound-toggle">Sound</label>
-            <label class="switch">
-                <input type="checkbox" id="sound-toggle">
-                <span class="slider"></span>
-            </label>
-        </div>
-        <button onclick="closeSettings()">Close</button>
+    <div class="toggle-container">
+        <label for="sound-toggle">Sound</label>
+        <label class="switch">
+            <input type="checkbox" id="sound-toggle">
+            <span class="slider"></span>
+        </label>
     </div>
+    <button onclick="closeSettings()">Close</button>
+</div>
 
+<!-- Controls Modal -->
+<div id="controlsModal" class="modal">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h2>Game Controls</h2>
+    <ul>
+      <li><strong>WASD</strong> – Move</li>
+      <li><strong>K</strong> – Kick</li>
+      <li><strong>P</strong> – Pass</li>
+      <li><strong>T</strong> – Tackle</li>
+      <li><strong>C</strong> – Change Camera</li>
+    </ul>
+  </div>
+</div>
 <div id="timerDiv" style="
   position: absolute;
   top: 10px; right: 20px;

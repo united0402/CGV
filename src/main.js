@@ -1571,6 +1571,24 @@ window.addEventListener("keydown", (e) => {
     }
   }
 });
+const modal = document.getElementById('controlsModal');
+const btn = document.getElementById('controlsButton');
+const span = document.querySelector('.close');
+
+btn.addEventListener('click', () => {
+  modal.style.display = 'block';
+});
+
+span.addEventListener('click', () => {
+  modal.style.display = 'none';
+});
+
+window.addEventListener('click', (event) => {
+  if (event.target === modal) {
+    modal.style.display = 'none';
+  }
+});
+
 
 window.addEventListener("keyup", (e) => {
   if (e.key in keys) keys[e.key] = false;
@@ -1599,6 +1617,7 @@ const gameOverDiv = document.getElementById("gameOverDiv");
 const startBtn = document.getElementById("startBtn");
 
 startBtn.addEventListener("click", startGame);
+const bgMusic = document.getElementById('bgMusic');
 
 function startGame() {
   startScreen.style.display = "none";
@@ -1608,7 +1627,10 @@ function startGame() {
   gameTime = 300;
   score = 0;
   scoreDiv.innerText = "Score: 0";
-
+  bgMusic.volume = 0.5; // optional: adjust volume (0.0 to 1.0)
+  bgMusic.play().catch(err => {
+    console.log("Autoplay blocked until user interaction:", err);
+  });
   // reset ball
   if (ballBody) {
     ballBody.position.set(0, groundTopY + ballRadiusWorld + 1, 0);
@@ -1646,34 +1668,34 @@ function restartGame() {
 
 // PARAMETERS
 const playerSpeed = 15;
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.25;
+
 const fifaOffset = new THREE.Vector3(0,15,-25)
 const fifaLerp = 0.08;
-function updateFIFACamera() {
-  if (!player || !playerBody) return;
-  
-  // Get player position and direction
-  const playerPos = player.position.clone();
-  const playerDirection = new THREE.Vector3(
-    Math.sin(player.rotation.y),
-    0,
-    Math.cos(player.rotation.y)
+function updateCameraFIFA() {
+  if (!playerBody) return;
+
+  // Get player's position from physics body
+  const playerPos = new THREE.Vector3(
+    playerBody.position.x,
+    playerBody.position.y,
+    playerBody.position.z
   );
-  
-  // Calculate desired camera position (behind and above player)
-  const desiredPosition = playerPos.clone()
-    .add(cameraOffset.clone().applyEuler(new THREE.Euler(0, player.rotation.y, 0)));
-  
-  // Smoothly interpolate camera position
-  camera.position.lerp(desiredPosition, cameraLerpFactor);
-  
-  // Look slightly ahead of the player in their movement direction
-  const lookAtTarget = playerPos.clone().add(playerDirection.multiplyScalar(10));
-  lookAtTarget.y += 5; // Look slightly upward
-  
-  camera.lookAt(lookAtTarget);
+
+  // Use player's facing direction (from mesh rotation if available)
+  const forward = new THREE.Vector3(0, 0, 1);
+  if (player) forward.applyQuaternion(player.quaternion);
+
+  // Desired camera position (behind and above player)
+  const desiredPos = playerPos.clone()
+    .addScaledVector(forward, -25) // behind player
+    .add(new THREE.Vector3(0, 15, 0)); // above player
+
+  // Smoothly move camera toward desired position
+  camera.position.lerp(desiredPos, fifaLerp);
+
+  // Make camera look slightly ahead of the player
+  const lookAtPos = playerPos.clone().addScaledVector(forward, 10);
+  camera.lookAt(lookAtPos);
 }
 function animate() {
   requestAnimationFrame(animate);
@@ -1686,7 +1708,7 @@ if (playerBody && ballBody) {
     keepBallClose();
   }
    if (cameraMode === 0) {
-    updateFIFACamera();
+    updateCameraFIFA();
   }
   if (playerBody) {
     let moveX = 0;
@@ -1800,7 +1822,7 @@ blockers.forEach((b, i) => {
   // Keep physics velocity zero since we teleport manually
   b.body.velocity.set(0, 0, 0);
 });
-  controls.update();
+ 
   renderer.render(scene, camera);
 }
 
